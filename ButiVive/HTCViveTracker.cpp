@@ -31,8 +31,16 @@ public:
     std::string GetLastButtonPressedString(const std::string& arg_deviceName) override;
     VRDeviceButtonId GetLastButtonPressedEnum(const std::string& arg_deviceName)override;
     bool HapticPulse(const std::string& arg_deviceName,const std::uint32_t arg_axisIndex,const std::int16_t arg_durationMicrosec)override;
-    void SetOffSetMatrix(const Matrix4x4& arg_matrix) override { m_offsetMatrix = arg_matrix.GetInverse(); }
-    const Matrix4x4& GetOffSetMatrix()const override { return m_offsetMatrix; }
+    void SetOrigin(const Matrix4x4& arg_matrix) override { m_offsetMatrix = arg_matrix.GetInverse(); }
+    void SetOrigin(const std::int32_t arg_deviceIndex) override {
+
+        vr::TrackedDevicePose_t current_device_pose = m_devicePoses[arg_deviceIndex];
+        if (current_device_pose.bDeviceIsConnected && current_device_pose.bPoseIsValid) {
+            auto deviceMatrix = VRMatrixToMatrix(current_device_pose.mDeviceToAbsoluteTracking);
+            m_offsetMatrix *= deviceMatrix.Inverse();
+        }
+    }
+    const Matrix4x4& GetOrigin()const override { return m_offsetMatrix; }
 private:
     vr::IVRSystem* m_p_vrSystem;
 

@@ -92,8 +92,9 @@ public:
     virtual std::string GetLastButtonPressedString(const std::string& arg_deviceName)= 0;
     virtual VRDeviceButtonId GetLastButtonPressedEnum(const std::string& arg_deviceName) = 0;
     virtual bool HapticPulse(const std::string& arg_deviceName,const std::uint32_t arg_axisIndex,const std::int16_t arg_durationMicrosec)= 0;
-    virtual void SetOffSetMatrix(const ButiEngine::Matrix4x4& arg_matrix)=0;
-    virtual const ButiEngine::Matrix4x4& GetOffSetMatrix()const=0;
+    virtual void SetOrigin(const ButiEngine::Matrix4x4& arg_matrix) = 0;
+    virtual void SetOrigin(const std::int32_t arg_deviceIndex)=0;
+    virtual const ButiEngine::Matrix4x4& GetOrigin()const=0;
 };
 BUTIVIVE_API  ButiEngine::Value_ptr<ITracker> CreateTracker();
 }
