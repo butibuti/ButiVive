@@ -3,6 +3,18 @@
 #include<map>
 #include<string>
 #include<iostream>
+
+
+#ifdef _DEBUG
+
+bool g_isDebugPrint = false;
+void DefaultPrintFunction(const std::string& arg_text) {
+    if (g_isDebugPrint)
+        std::cout << arg_text << std::endl;
+}
+void(*g_printFunction)(const std::string&) = &DefaultPrintFunction;
+#endif // DEBUG
+
 namespace ButiVive {
 using namespace ButiEngine;
 class HtcViveTracker :public ITracker
@@ -12,7 +24,7 @@ public:
     HtcViveTracker();
     ~HtcViveTracker();
 
-    bool Initialize(const bool arg_verbose)override;
+    bool Initialize()override;
     bool ShutDown()override;
 
     void Update()override;
@@ -37,10 +49,11 @@ public:
         vr::TrackedDevicePose_t current_device_pose = m_devicePoses[arg_deviceIndex];
         if (current_device_pose.bDeviceIsConnected && current_device_pose.bPoseIsValid) {
             auto deviceMatrix = VRMatrixToMatrix(current_device_pose.mDeviceToAbsoluteTracking);
-            m_offsetMatrix *= deviceMatrix.Inverse();
+            m_offsetMatrix = deviceMatrix.Inverse();
         }
     }
     const Matrix4x4& GetOrigin()const override { return m_offsetMatrix; }
+
 private:
     vr::IVRSystem* m_p_vrSystem;
 
@@ -56,7 +69,6 @@ private:
     Matrix4x4 m_offsetMatrix;
 
     EventFlags m_events;
-    bool m_isVerbose;
     const std::uint32_t MAX_PULSE_DURATION = 3999;
 
     static constexpr const char* NAME_HMD = "hmd";
@@ -83,21 +95,19 @@ HtcViveTracker::~HtcViveTracker()
 {
     ShutDown();
 }
-bool HtcViveTracker::Initialize(const bool arg_verbose)
+bool HtcViveTracker::Initialize()
 {
-    m_isVerbose = arg_verbose;
     bool runtime_ok = vr::VR_IsRuntimeInstalled();
     bool hmd_present = vr::VR_IsHmdPresent();
     vr::EVRInitError er;
     m_p_vrSystem = vr::VR_Init(&er, vr::VRApplication_Background);
     std::string init_error = vr::VR_GetVRInitErrorAsSymbol(er);
 
-    if (m_isVerbose) {
-        std::cout << "VR is runtime installed : " << runtime_ok << std::endl;
-        std::cout << "VR is HMD present : " << hmd_present << std::endl;
-        std::cout << "VR init error : " << er << init_error << std::endl;
-    }
-
+#ifdef _DEBUG
+    (*g_printFunction)("VR is runtime installed : " + std::to_string(runtime_ok));
+    (*g_printFunction)("VR is HMD present : " + std::to_string(hmd_present));
+    (*g_printFunction)("VR init error : " + std::to_string(er) + init_error);
+#endif
     if (runtime_ok && hmd_present && er == vr::VRInitError_None) {
         m_maxDevices = vr::k_unMaxTrackedDeviceCount;
         for (std::int32_t index = 0; index<m_maxDevices; index++) {
@@ -106,10 +116,15 @@ bool HtcViveTracker::Initialize(const bool arg_verbose)
         }
         m_vrChaperone = (vr::IVRChaperone*)vr::VR_GetGenericInterface(vr::IVRChaperone_Version, &er);
         if (er == 0) {
-            if (m_isVerbose) std::cout << "Chaperone initialized correctly" << std::endl;
+
+#ifdef _DEBUG
+            (*g_printFunction)("Chaperone initialized correctly");
+#endif
         }
         else {
-            if (m_isVerbose) std::cout << "Problem initializing chaperone" << std::endl;
+#ifdef _DEBUG
+            (*g_printFunction) ("Problem initializing chaperone");
+#endif
             return false;
         }
         Update();
@@ -117,9 +132,9 @@ bool HtcViveTracker::Initialize(const bool arg_verbose)
         return true;
     }
     else {
-        if (m_isVerbose) {
-            std::cout << "Problem initializing VR" << std::endl;
-        }
+#ifdef _DEBUG
+        (*g_printFunction) ("Problem initializing VR");
+#endif
         return false;
     }
 }
@@ -127,9 +142,9 @@ bool HtcViveTracker::ShutDown()
 {
     if (m_p_vrSystem) {
         vr::VR_Shutdown();
-        if (m_isVerbose) {
-            std::cout << "Device is shut down" << std::endl;
-        }
+#ifdef _DEBUG
+        (*g_printFunction) ("Device is shut down" );
+#endif
         return true;
     }
     else {
@@ -142,10 +157,10 @@ void HtcViveTracker::Update()
     m_p_vrSystem->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, 0, m_devicePoses, m_maxDevices);
     for (vr::TrackedDeviceIndex_t device_index = vr::k_unTrackedDeviceIndex_Hmd; device_index < m_maxDevices; ++device_index) {
         if (m_devicePoses[device_index].bDeviceIsConnected && m_devicePoses[device_index].bPoseIsValid) {
-            if (m_isVerbose) {
-                std::string info = ("device[" + std::to_string(device_index) + "]: " + GetDeviceClass(device_index) + " " + std::to_string(m_devicePoses[device_index].eTrackingResult));
-                std::cout << info << std::endl;
-            }
+            std::string info = ("device[" + std::to_string(device_index) + "]: " + GetDeviceClass(device_index) + " " + std::to_string(m_devicePoses[device_index].eTrackingResult));
+#ifdef _DEBUG
+            (*g_printFunction)(info);
+#endif
         }
     }
 }
@@ -166,7 +181,9 @@ void HtcViveTracker::PrintAllDetectedDevices()
         if (m_devicePoses[device_index].bDeviceIsConnected && m_devicePoses[device_index].bPoseIsValid) {
             std::string arg_deviceName = m_list_devicesNames[device_index];
             std::string info = ("device[" + std::to_string(device_index) + "]: " + arg_deviceName + " is connected");
-            std::cout << info << std::endl;
+#ifdef _DEBUG
+            (*g_printFunction) (info);
+#endif
         }
     }
 }
@@ -197,7 +214,9 @@ bool HtcViveTracker::EventPolling()
     if (!m_p_vrSystem) { return false; }
     vr::VREvent_t event;
     if (m_p_vrSystem->PollNextEvent(&event, sizeof(event))) {
-        std::cout << m_p_vrSystem->GetEventTypeNameFromEnum((vr::EVREventType)event.eventType) << std::endl;
+#ifdef _DEBUG
+        (*g_printFunction) (m_p_vrSystem->GetEventTypeNameFromEnum((vr::EVREventType)event.eventType) );
+#endif
         switch (event.eventType) {
         case vr::VREvent_TrackedDeviceActivated:
             AddNewDevice(event.trackedDeviceIndex);
@@ -322,14 +341,16 @@ bool HtcViveTracker::HapticPulse(const std::string& arg_deviceName, const std::u
 void HtcViveTracker::InitializeDeviceMap()
 {
     std::int32_t num_detected_devices = m_maxDevices;
-    if (m_isVerbose) {
-        std::cout << "Detected devices:" << std::endl;
-    }
+#ifdef _DEBUG
+    (*g_printFunction) ("Detected devices:" );
+#endif
     std::string arg_deviceName;
     for (std::int32_t i = 0; i < num_detected_devices; ++i) {
         if (m_devicePoses[i].bDeviceIsConnected && m_devicePoses[i].bPoseIsValid) {
             arg_deviceName = SetDeviceName(i);
-            if (m_isVerbose) std::cout << i << " :  " << arg_deviceName << std::endl;
+#ifdef _DEBUG
+            (*g_printFunction) (std::to_string( i) +" :  " +arg_deviceName );
+#endif
             m_devicesIndex[arg_deviceName] = i;
             m_list_devicesNames[i] = arg_deviceName;
         }
@@ -442,8 +463,18 @@ bool HtcViveTracker::DeleteDevice(const std::int32_t arg_deviceIndex)
 Value_ptr<ITracker> ButiVive::CreateTracker()
 {
     auto output = make_value<HtcViveTracker>();
-    output->Initialize(true);
+    output->Initialize();
 
     return output;
 }
+#ifdef _DEBUG
+void SetPrintFunction(void(*arg_printFunction)(const std::string&))
+{
+    g_isDebugPrint = arg_printFunction;
+}
+void SetIsDebugPrint(const bool arg_isDebugPrintEnable)
+{
+    g_isDebugPrint = arg_isDebugPrintEnable;
+}
+#endif
 }

@@ -73,7 +73,7 @@ enum class VRDeviceButtonId
 };
 class ITracker {
 public:
-    virtual bool Initialize(const bool arg_verbose)= 0;
+    virtual bool Initialize()= 0;
     virtual bool ShutDown()= 0;
 
     virtual void Update()= 0;
@@ -97,6 +97,10 @@ public:
     virtual const ButiEngine::Matrix4x4& GetOrigin()const=0;
 };
 BUTIVIVE_API  ButiEngine::Value_ptr<ITracker> CreateTracker();
+#ifdef _DEBUG
+BUTIVIVE_API void SetPrintFunction(void (*arg_printFunction)(const std::string&));
+BUTIVIVE_API void SetIsDebugPrint(const bool arg_isDebugPrintEnable);
+#endif
 }
 
 #endif // !BUTIVIVE_COMMON_H
