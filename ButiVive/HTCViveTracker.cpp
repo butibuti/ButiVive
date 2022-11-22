@@ -43,7 +43,7 @@ public:
     std::string GetLastButtonPressedString(const std::string& arg_deviceName) override;
     VRDeviceButtonId GetLastButtonPressedEnum(const std::string& arg_deviceName)override;
     bool HapticPulse(const std::string& arg_deviceName,const std::uint32_t arg_axisIndex,const std::int16_t arg_durationMicrosec)override;
-    void SetOrigin(const Matrix4x4& arg_matrix) override { m_offsetMatrix = arg_matrix.GetInverse(); }
+    void SetOrigin(const Matrix4x4& arg_matrix) override { m_offsetMatrix = arg_matrix; }
     void SetOrigin(const std::int32_t arg_deviceIndex) override {
 
         vr::TrackedDevicePose_t current_device_pose = m_devicePoses[arg_deviceIndex];
@@ -369,7 +369,11 @@ Matrix4x4 HtcViveTracker::VRMatrixToMatrix(const vr::HmdMatrix34_t& arg_Matrix)
     memcpy_s(output.m, sizeof(Matrix4x4) , arg_Matrix.m, sizeof(vr::HmdMatrix34_t));
 
     output.Transpose();
-    output._43 *= -1;
+    output._41 *= -1;
+    output._13 *= -1;
+    output._31 *= -1;
+    output._12 *= -1;
+    output._21 *= -1;
     return output;
 }
 
